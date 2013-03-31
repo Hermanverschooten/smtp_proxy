@@ -246,7 +246,7 @@ EOF
                     wait_password=false
                     data="#{@password}\r\n"
                   end
-                  log "#{Thread.current.object_id}: client->server #{data.inspect}"
+                  log "#{Thread.current.object_id}: client->server #{data.inspect}" if @verbose
                   server_socket.write data
                   server_socket.flush
                 else
@@ -254,7 +254,7 @@ EOF
                   # Adapt to remove authentication
                   wait_username=(data =~ /334.VXNlcm5hbWU6/)!=nil
                   wait_password=(data =~ /334.UGFzc3dvcmQ6/)!=nil
-                  log "#{Thread.current.object_id}: server->client #{data.inspect}"
+                  log "#{Thread.current.object_id}: server->client #{data.inspect}" if @verbose
                   client_socket.write data
                   client_socket.flush
                 end
@@ -271,7 +271,7 @@ EOF
         server_socket.close
       end
     end
-
+    
     def threads_alive(threads)
       threads.select { |t| t.alive? ? true : (t.join); false}
     end
