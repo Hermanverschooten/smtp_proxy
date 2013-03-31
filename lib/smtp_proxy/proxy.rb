@@ -148,7 +148,7 @@ EOF
       if options[:Daemon]
         require 'webrick/server'
         @@pid_file = File.expand_path(options[:Pidfile], options[:Chdir])
-        if File.exists? @@pid_flle
+        if File.exists? @@pid_file
           pid = ''
           File.open(@@pid_file, 'r') {|f| pid = f.read.chomp}
           if system("ps -p #{pid} | grep #{pid}")
@@ -271,7 +271,7 @@ EOF
         server_socket.close
       end
     end
-    
+
     def threads_alive(threads)
       threads.select { |t| t.alive? ? true : (t.join); false}
     end
