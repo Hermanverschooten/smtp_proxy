@@ -159,7 +159,7 @@ EOF
             $stderr.puts "smtp_proxy is not runing. Removing existing pid file and starting up."
           end
         end
-        Webrick::Daemon.start
+        WEBrick::Daemon.start
         File.open(@@pid_file, 'w') {|f| f.write "#{Process.pid}\n"}
       end
 
