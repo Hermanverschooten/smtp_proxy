@@ -19,11 +19,11 @@ Or install it yourself as:
 
 Generate the initializer
 
-  $ ruby script/generate smtp_proxy install
+    $ ruby script/generate smtp_proxy install
 
   or
 
-  $ rails g smtp_proxy install
+    $ rails g smtp_proxy install
 
 ## Usage
 
