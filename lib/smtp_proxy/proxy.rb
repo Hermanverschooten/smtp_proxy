@@ -9,129 +9,126 @@ module SmtpProxy
     end
 
 
-      @@pid_file = nil
+    @@pid_file = nil
 
-      def self.remove_pid_file
-        if @@pid_file
-          require "shell"
-          sh = Shell.new
-          sh.rm @@pid_file
+    def self.remove_pid_file
+      if @@pid_file
+        require "shell"
+        sh = Shell.new
+        sh.rm @@pid_file
+      end
+    end
+
+    def self.process_args(args)
+      name = File.basename $0
+
+      options={}
+      options[:Chdir] = "."
+      options[:Daemon] = false
+      options[:ListenPort] = 25
+      options[:RemotePort] = 25
+      options[:RailsEnv] = ENV["RAILS_ENV"]
+      options[:Pidfile] = '/log/smtp_proxy.pid'
+      options[:Verbose]=true
+      options[:ListenIp] = "0.0.0.0"
+      options[:Threads] = 2
+      options[:Username] = "smtp_proxy"
+      options[:Password] = "password"
+
+      opts = OptionParser.new do |opts|
+        opts.banner = "Usage: #{name} [options]"
+        opts.separator  ''
+        opts.separator  "#{name} calls the allowed method of the Proxy class to determine"
+        opts.separator  "if the connecting ip address is allowed to use the proxy."
+        opts.separator  ''
+        opts.separator "#{name} must be run from the Rails application's root."
+        opts.separator ''
+        opts.separator "#{name} options:"
+
+        opts.on("-l", "--listen_ip IP", "IP to listen on.", "Default: #{options[:ListenIp]}",String) do |listen_ip|
+          options[:ListenIp] = listen_ip
         end
+
+        opts.on("-p", "--listen_port PORT", "The port to listen on", "Default: #{options[:ListenPort]}",Integer) do |listen_port|
+          options[:ListenPort] = listen_port
+        end
+
+        opts.on("-r", "--remote-ip IP", "The smtp server to connect to", String) do |remote_ip|
+          options[:RemoteIp] = remote_ip
+        end
+
+        opts.on("-q", "--remote-port PORT", "The port of the remote smtp server","Default: #{options[:RemotePort]}",Integer) do |remote_port|
+          options[:RemotePort] = remote_port
+        end
+
+        opts.on("-t", "--threads NUM", "The number of threads to use", "Default: #{options[:Threads]}", Integer) do |threads|
+          options[:Threads] = threads
+        end
+
+        opts.on("-d", "--daemonize", "Run as a daemon", "Default: #{options[:Daemon]}") do |daemon|
+          options[:Daemon] = true
+        end
+
+        opts.on("-f", "--pid-file PIDFILE", "Set the pidfile location", "Default: #{options[:Chdir]}#{options[:Pidfile]}",String) do |pidfile|
+          options[:Pidfile] = pidfile
+        end
+
+        opts.on("-u", "--username USERNAME", "The username for authenticated SMTP", "Default: #{options[:Username]}",String) do |username|
+          options[:Username] = username
+        end
+
+        opts.on("-w", "--password PASSWORD", "The password for authenticated SMTP", "Default: #{options[:Password]}",String) do |password|
+          options[:Password] = password
+        end
+
+        opts.separator ''
+        opts.separator "Generic Options:"
+
+        opts.on("-v", "--[no-]verbose", "Be verbose", "Default: #{options[:Verbose]}") do |verbose|
+          options[:Verbose] = verbose
+        end
+
+        opts.on("-c", "--chdir PATH", "Use PATH for the application path", "Default: #{options[:Chdir]}") do |path|
+          usage opts, "#{path} is not a directory" unless File.directory? path
+          usage opts, "#{path} is not readable" unless File.readable? path
+          options[:Chdir] = path
+        end
+
+        opts.on("-e", "--environment RAILS_ENV", "Set the RAILS_ENV constant", "Default: #{options[:RailsEnv]}") do |env|
+          options[:RailsEnv] = env
+        end
+
+        opts.on("-h", "--help", "This help message") do
+          usage opts
+        end
+
+        opts.on("--version", "Version of SmtpProxy") do
+          usage "smtp_proxy #{VERSION}"
+        end
+
+        opts.separator ''
+
       end
 
-      def self.process_args(args)
-        name = File.basename $0
+      opts.parse! args
 
-        options={}
-        options[:Chdir] = "."
-        options[:Daemon] = false
-        options[:ListenPort] = 25
-        options[:RemotePort] = 25
-        options[:RailsEnv] = ENV["RAILS_ENV"]
-        options[:Pidfile] = '/log/smtp_proxy.pid'
-        options[:Verbose]=true
-        options[:ListenIp] = "0.0.0.0"
-        options[:Threads] = 2
-        options[:Username] = "smtp_proxy"
-        options[:Password] = "password"
+      ENV['RAILS_ENV'] = options[:RailsEnv]
 
-        opts = OptionParser.new do |opts|
-          opts.banner = "Usage: #{name} [options]"
-          opts.separator  ''
-          opts.separator  "#{name} calls the allowed method of the Proxy class to determine"
-          opts.separator  "if the connecting ip address is allowed to use the proxy."
-          opts.separator  ''
-          opts.separator "#{name} must be run from the Rails application's root."
-          opts.separator ''
-          opts.separator "#{name} options:"
+      begin
+        load_rails_environment(options[:Chdir])
+      rescue RailsEnvironmentFailed
+        usage opts, "#{name} must be run from a Rails application's root to function properly.\n#{Dir.pwd} does not appear to be a Rails application's root."
+      end
 
-          opts.on("-l", "--listen_ip IP", "IP to listen on.", "Default: #{options[:ListenIp]}",String) do |listen_ip|
-            options[:ListenIp] = listen_ip
-          end
-
-          opts.on("-p", "--listen_port PORT", "The port to listen on", "Default: #{options[:ListenPort]}",Integer) do |listen_port|
-            options[:ListenPort] = listen_port
-          end
-
-          opts.on("-r", "--remote-ip IP", "The smtp server to connect to", String) do |remote_ip|
-            options[:RemoteIp] = remote_ip
-          end
-
-          opts.on("-q", "--remote-port PORT", "The port of the remote smtp server","Default: #{options[:RemotePort]}",Integer) do |remote_port|
-            options[:RemotePort] = remote_port
-          end
-
-          opts.on("-t", "--threads NUM", "The number of threads to use", "Default: #{options[:Threads]}", Integer) do |threads|
-            options[:Threads] = threads
-          end
-
-          opts.on("-d", "--daemonize", "Run as a daemon", "Default: #{options[:Daemon]}") do |daemon|
-            options[:Daemon] = true
-          end
-
-          opts.on("-f", "--pid-file PIDFILE", "Set the pidfile location", "Default: #{options[:Chdir]}#{options[:Pidfile]}",String) do |pidfile|
-            options[:Pidfile] = pidfile
-          end
-
-          opts.on("-u", "--username USERNAME", "The username for authenticated SMTP", "Default: #{options[:Username]}",String) do |username|
-            options[:Username] = username
-          end
-
-          opts.on("-w", "--password PASSWORD", "The password for authenticated SMTP", "Default: #{options[:Password]}",String) do |password|
-            options[:Password] = password
-          end
-
-          opts.separator ''
-          opts.separator "Generic Options:"
-
-          opts.on("-v", "--[no-]verbose", "Be verbose", "Default: #{options[:Verbose]}") do |verbose|
-            options[:Verbose] = verbose
-          end
-
-          opts.on("-c", "--chdir PATH", "Use PATH for the application path", "Default: #{options[:Chdir]}") do |path|
-            usage opts, "#{path} is not a directory" unless File.directory? path
-            usage opts, "#{path} is not readable" unless File.readable? path
-            options[:Chdir] = path
-          end
-
-          opts.on("-e", "--environment RAILS_ENV", "Set the RAILS_ENV constant", "Default: #{options[:RailsEnv]}") do |env|
-            options[:RailsEnv] = env
-          end
-
-          opts.on("-h", "--help", "This help message") do
-            usage opts
-          end
-
-          opts.on("--version", "Version of SmtpProxy") do
-            usage "smtp_proxy #{VERSION}"
-          end
-
-          opts.separator ''
-
-        end
-
-        opts.parse! args
-
-        ENV['RAILS_ENV'] = options[:RailsEnv]
-
-        begin
-          load_rails_environment(options[:Chdir])
-        rescue RailsEnvironmentFailed
-          usage opts, <<EOF
-#{name} must be run from a Rails application's root to function properly.
-#{Dir.pwd} does not appear to be a Rails application's root.
-EOF
-        end
-
-        return options
+      return options
     end
 
     def self.load_rails_environment(base_path)
       Dir.chdir(base_path) do
         require "config/environment"
       end
-    rescue LoadError
-      raise RailsEnvironmentFailed
+      rescue LoadError
+        raise RailsEnvironmentFailed
     end
 
     def default_log_path
