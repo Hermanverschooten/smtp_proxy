@@ -216,7 +216,7 @@ module SmtpProxy
           log "#{Thread.current.object_id}: got a client connection from #{remote_addr}"
           begin
             if self.class.allowed?(remote_addr)
-              server_socket = TCPSocket.new(@remote_host, @remote_port)
+              server_socket = TCPSocket.new(@remote_host, @remote_port, @listen_ip)
             else
               log "#{Thread.current.object_id}: Denied connection to #{remote_addr}"
               raise Errno::ECONNREFUSED
