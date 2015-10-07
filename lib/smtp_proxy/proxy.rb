@@ -125,7 +125,7 @@ module SmtpProxy
 
     def self.load_rails_environment(base_path)
       Dir.chdir(base_path) do
-        require "config/environment"
+        require "./config/environment"
       end
       rescue LoadError
         raise RailsEnvironmentFailed
